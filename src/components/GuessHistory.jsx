@@ -1,10 +1,6 @@
-import { COLORS, CODE_LENGTH } from '../gameLogic';
+import { getColorById } from '../gameLogic';
 
-function getColorHex(colorId) {
-  return COLORS.find((c) => c.id === colorId)?.hex || '#333';
-}
-
-function FeedbackPegs({ feedback }) {
+function FeedbackPegs({ feedback, codeLength }) {
   const pegs = [];
   for (let i = 0; i < feedback.red; i++) {
     pegs.push(
@@ -34,8 +30,7 @@ function FeedbackPegs({ feedback }) {
       />
     );
   }
-  // Empty pegs
-  const empty = CODE_LENGTH - feedback.red - feedback.white;
+  const empty = codeLength - feedback.red - feedback.white;
   for (let i = 0; i < empty; i++) {
     pegs.push(
       <div
@@ -44,14 +39,16 @@ function FeedbackPegs({ feedback }) {
       />
     );
   }
+
+  const cols = codeLength <= 4 ? 2 : 3;
   return (
-    <div className="grid grid-cols-2 gap-1.5 w-10">
+    <div className={`grid gap-1.5`} style={{ gridTemplateColumns: `repeat(${cols}, 1fr)`, width: cols === 2 ? '2.5rem' : '3.5rem' }}>
       {pegs}
     </div>
   );
 }
 
-export default function GuessHistory({ history }) {
+export default function GuessHistory({ history, codeLength = 4 }) {
   if (history.length === 0) {
     return (
       <div className="text-center py-8">
@@ -59,7 +56,7 @@ export default function GuessHistory({ history }) {
           // No attempts yet
         </p>
         <p className="text-gray-600 text-xs mt-1">
-          Select 4 colors and submit your guess
+          Select {codeLength} colors and submit your guess
         </p>
       </div>
     );
@@ -70,32 +67,35 @@ export default function GuessHistory({ history }) {
       {history.map((entry, rowIdx) => (
         <div
           key={rowIdx}
-          className="flex items-center gap-4 bg-cyber-card/80 border border-cyber-border rounded-lg px-4 py-2.5 animate-slide-in"
+          className="flex items-center gap-3 bg-cyber-card/80 border border-cyber-border rounded-lg px-3 py-2.5 animate-slide-in"
           style={{ animationDelay: `${rowIdx * 50}ms` }}
         >
           <span className="text-neon-purple/60 text-xs font-mono w-6 shrink-0">
             {String(rowIdx + 1).padStart(2, '0')}
           </span>
 
-          <div className="flex gap-2">
-            {entry.guess.map((colorId, colIdx) => (
-              <div
-                key={colIdx}
-                className="w-10 h-10 rounded-md animate-flip-reveal"
-                style={{
-                  backgroundColor: getColorHex(colorId),
-                  boxShadow: `0 0 8px ${COLORS.find(c => c.id === colorId)?.glow || 'transparent'}`,
-                  animationDelay: `${colIdx * 80}ms`,
-                }}
-              />
-            ))}
+          <div className="flex gap-1.5">
+            {entry.guess.map((colorId, colIdx) => {
+              const color = getColorById(colorId);
+              return (
+                <div
+                  key={colIdx}
+                  className="w-9 h-9 rounded-md animate-flip-reveal"
+                  style={{
+                    backgroundColor: color?.hex || '#333',
+                    boxShadow: `0 0 8px ${color?.glow || 'transparent'}`,
+                    animationDelay: `${colIdx * 80}ms`,
+                  }}
+                />
+              );
+            })}
           </div>
 
-          <div className="mx-2 w-px h-8 bg-cyber-border" />
+          <div className="mx-1 w-px h-8 bg-cyber-border" />
 
-          <FeedbackPegs feedback={entry.feedback} />
+          <FeedbackPegs feedback={entry.feedback} codeLength={codeLength} />
 
-          <div className="ml-2 text-xs font-mono">
+          <div className="ml-auto text-xs font-mono whitespace-nowrap">
             <span className="text-red-400">{entry.feedback.red}R</span>
             {' '}
             <span className="text-gray-300">{entry.feedback.white}W</span>

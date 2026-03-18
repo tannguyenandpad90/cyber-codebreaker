@@ -1,20 +1,31 @@
-import { generateSecretCode, checkGuess, CODE_LENGTH, MAX_GUESSES } from './gameLogic';
+import { generateSecretCode, checkGuess } from './gameLogic';
+import { DIFFICULTIES } from './components/DifficultySelector';
 
 export const ACTIONS = {
   SELECT_COLOR: 'SELECT_COLOR',
   REMOVE_COLOR: 'REMOVE_COLOR',
   SUBMIT_GUESS: 'SUBMIT_GUESS',
   RESET_GAME: 'RESET_GAME',
+  USE_HINT: 'USE_HINT',
 };
 
-export function createInitialState() {
+export function createInitialState(difficulty = 'normal') {
+  const diff = DIFFICULTIES[difficulty];
   return {
-    secretCode: generateSecretCode(),
+    difficulty,
+    secretCode: generateSecretCode(diff),
     currentGuess: [],
-    guessHistory: [], // [{ guess: [...], feedback: { red, white } }]
-    gameStatus: 'playing', // 'playing' | 'won' | 'lost'
+    guessHistory: [],
+    gameStatus: 'playing',
     currentRound: 0,
-    lastAction: null, // for triggering animations
+    hintsUsed: 0,
+    revealedPositions: [], // indices revealed by hints
+    lastAction: null,
+    codeLength: diff.codeLength,
+    maxGuesses: diff.maxGuesses,
+    maxHints: diff.maxHints,
+    allowDuplicates: diff.allowDuplicates,
+    colorCount: diff.colorCount,
   };
 }
 
@@ -22,9 +33,8 @@ export function gameReducer(state, action) {
   switch (action.type) {
     case ACTIONS.SELECT_COLOR: {
       if (state.gameStatus !== 'playing') return state;
-      if (state.currentGuess.length >= CODE_LENGTH) return state;
-      // Don't allow duplicate colors in a guess
-      if (state.currentGuess.includes(action.color)) return state;
+      if (state.currentGuess.length >= state.codeLength) return state;
+      if (!state.allowDuplicates && state.currentGuess.includes(action.color)) return state;
       return {
         ...state,
         currentGuess: [...state.currentGuess, action.color],
@@ -45,7 +55,7 @@ export function gameReducer(state, action) {
 
     case ACTIONS.SUBMIT_GUESS: {
       if (state.gameStatus !== 'playing') return state;
-      if (state.currentGuess.length !== CODE_LENGTH) return state;
+      if (state.currentGuess.length !== state.codeLength) return state;
 
       const feedback = checkGuess(state.currentGuess, state.secretCode);
       const newHistory = [
@@ -55,9 +65,9 @@ export function gameReducer(state, action) {
       const newRound = state.currentRound + 1;
 
       let gameStatus = 'playing';
-      if (feedback.red === CODE_LENGTH) {
+      if (feedback.red === state.codeLength) {
         gameStatus = 'won';
-      } else if (newRound >= MAX_GUESSES) {
+      } else if (newRound >= state.maxGuesses) {
         gameStatus = 'lost';
       }
 
@@ -71,8 +81,30 @@ export function gameReducer(state, action) {
       };
     }
 
+    case ACTIONS.USE_HINT: {
+      if (state.gameStatus !== 'playing') return state;
+      if (state.hintsUsed >= state.maxHints) return state;
+
+      // Find a position not yet revealed
+      const unrevealed = [];
+      for (let i = 0; i < state.codeLength; i++) {
+        if (!state.revealedPositions.includes(i)) {
+          unrevealed.push(i);
+        }
+      }
+      if (unrevealed.length === 0) return state;
+
+      const pos = unrevealed[Math.floor(Math.random() * unrevealed.length)];
+      return {
+        ...state,
+        hintsUsed: state.hintsUsed + 1,
+        revealedPositions: [...state.revealedPositions, pos],
+        lastAction: 'hint',
+      };
+    }
+
     case ACTIONS.RESET_GAME: {
-      return createInitialState();
+      return createInitialState(action.difficulty || state.difficulty);
     }
 
     default:

@@ -1,10 +1,7 @@
-import { COLORS } from '../gameLogic';
+import { getColorById } from '../gameLogic';
+import { formatTimeCompact } from './Timer';
 
-function getColorHex(colorId) {
-  return COLORS.find((c) => c.id === colorId)?.hex || '#333';
-}
-
-export default function GameStatus({ gameStatus, secretCode, currentRound, onReset }) {
+export default function GameStatus({ gameStatus, secretCode, currentRound, onReset, elapsedTime }) {
   if (gameStatus === 'playing') return null;
 
   const isWon = gameStatus === 'won';
@@ -20,26 +17,35 @@ export default function GameStatus({ gameStatus, secretCode, currentRound, onRes
       <h2 className={`text-2xl font-bold mb-2 ${isWon ? 'neon-text-green' : 'neon-text-pink'}`}>
         {isWon ? '[ SYSTEM CRACKED ]' : '[ ACCESS DENIED ]'}
       </h2>
-      <p className="text-gray-400 text-sm mb-4">
+      <p className="text-gray-400 text-sm mb-3">
         {isWon
           ? `Code broken in ${currentRound} attempt${currentRound > 1 ? 's' : ''}!`
           : 'Maximum attempts exceeded. The secret code was:'
         }
       </p>
 
+      {isWon && elapsedTime > 0 && (
+        <p className="text-neon-yellow text-lg font-bold font-mono mb-3">
+          {formatTimeCompact(elapsedTime)}
+        </p>
+      )}
+
       {!isWon && (
         <div className="flex gap-2 justify-center mb-4">
-          {secretCode.map((colorId, i) => (
-            <div
-              key={i}
-              className="w-12 h-12 rounded-md animate-flip-reveal"
-              style={{
-                backgroundColor: getColorHex(colorId),
-                boxShadow: `0 0 10px ${COLORS.find(c => c.id === colorId)?.glow}`,
-                animationDelay: `${i * 150}ms`,
-              }}
-            />
-          ))}
+          {secretCode.map((colorId, i) => {
+            const color = getColorById(colorId);
+            return (
+              <div
+                key={i}
+                className="w-12 h-12 rounded-md animate-flip-reveal"
+                style={{
+                  backgroundColor: color?.hex || '#333',
+                  boxShadow: `0 0 10px ${color?.glow || 'transparent'}`,
+                  animationDelay: `${i * 150}ms`,
+                }}
+              />
+            );
+          })}
         </div>
       )}
 
